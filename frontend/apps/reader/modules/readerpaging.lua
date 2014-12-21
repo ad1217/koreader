@@ -8,6 +8,7 @@ local Event = require("ui/event")
 local UIManager = require("ui/uimanager")
 local Math = require("optmath")
 local DEBUG = require("dbg")
+local lfs = require("libs/libkoreader-lfs")
 local _ = require("gettext")
 
 local ReaderPaging = InputContainer:new{
@@ -769,8 +770,30 @@ function ReaderPaging:gotoPage(number, orig)
     if number == self.current_page or not number then
         return true
     end
-    if number > self.number_of_pages
-    or number < 1 then
+    if number > self.number_of_pages then
+        current_file=G_reader_settings:readSetting("lastfile")
+        current_file_name=current_file:match("[^/]*$")
+        current_path=current_file:match("(.*/)")
+        DEBUG("currentFile: "..current_file_name.." currentPath: "..current_path)
+        local entries = {}
+        local i = 0
+        for name in lfs.dir(current_path) do
+            i = i + 1
+            entries[i] = name
+        end
+        table.sort(entries) -- sort method, should probably make it the same as in FileChooser
+        local next_file=false
+        for i,file in pairs(entries) do
+            if next_file then
+                DEBUG("next file: "..file)
+                local ReaderUI = require("apps/reader/readerui")
+                ReaderUI:showReader(current_path..file)
+                return true
+            end
+            if file==current_file_name then next_file=true end
+        end
+        return false
+    elseif number < 1 then
         DEBUG("wrong page number: "..number.."!")
         return false
     end
